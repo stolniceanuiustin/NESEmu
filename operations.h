@@ -1,0 +1,5 @@
+#ifndef HEADERGUARD_OPERATIONS
+#define HEADERGUARD_OPERATIONS
+
+
+#endif
