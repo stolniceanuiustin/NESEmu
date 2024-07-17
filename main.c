@@ -56,7 +56,7 @@ void clear_screen(sdl_t sdl)
     SDL_RenderClear(sdl.renderer);
 }
 
-void handle_input(CPU_t* cpu)
+void handle_input(CPU_t *cpu)
 {
     SDL_Event event;
     while (SDL_PollEvent(&event))
@@ -85,7 +85,7 @@ void handle_input(CPU_t* cpu)
     }
 }
 
-int main(int argc, char** argv)
+int main(int argc, char **argv)
 {
     (void)argc;
     (void)argv;
@@ -105,17 +105,22 @@ int main(int argc, char** argv)
     init_sdl(&sdl);
     clear_screen(sdl);
 
-    while(cpu.state != QUIT)
+    while (cpu.state != QUIT)
     {
         handle_input(&cpu);
-        if(cpu.state == PAUSED)
+        if (cpu.state == PAUSED)
             continue;
+        //execute_cpu();
+        //measure clock cycles
+        //run ppu accordigly
+        //1 cpu cycle = 3 ppu cycles !
+    
     }
 
     final_cleanup(sdl);
-    #ifdef DEBUG
+#ifdef DEBUG
     printf("DEBUG");
     hex_dump(cpu);
-    #endif
+#endif
     return 0;
 }

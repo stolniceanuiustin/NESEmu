@@ -5,46 +5,14 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <unistd.h>
-typedef uint8_t byte;
-typedef enum {QUIT, RUNNING, PAUSED}emulator_state_t;
-typedef struct
-{
-    uint8_t aaa;
-    uint8_t bbb;
-    uint8_t cc;
-    byte opcode;
+#include "cpu_operations.h"
+#include "tracer.h"
+#include "cpu_init.h"
 
-}INSTRUCTION_t;
-
-typedef struct 
-{
-    byte A; //Accumulator
-    byte X; //X register
-    byte Y; //Y register
-    uint16_t PC; //Program counter. updated automatically as instructions are executed
-    byte stack[256]; //located in memory from $0100-$01FF
-    byte stack_pointer; //push -> decrement, pop -> increment(like in x86) 
-    byte ram[65536]; //$0000-$07FF internal ram. //
-    bool carry_flag;            //theoretically , all the flags are part of the processor status register 
-    bool zero_flag;
-    bool interrupt_disable;
-    bool decimal_mode;
-    bool break_comand;
-    bool overflow_flag;
-    bool negative_flag;
-    INSTRUCTION_t inst;
-    emulator_state_t state;    /* data */
-}CPU_t;
-
-typedef struct{
-    char* rom_name;
-    size_t max_rom_size; //0x8000
-    int entry_point;
-}CONFIG_t;
 
 byte read_byte(byte* address);
 void write_byte(byte* address, byte value);
-uint16_t read_address(CPU_t* cpu, byte offset);
-void emulate_instruction(CPU_t* cpu);
+uint16_t read_address(byte* ram, byte offset);
+void execute_cpu(CPU_t* cpu);
 
 #endif

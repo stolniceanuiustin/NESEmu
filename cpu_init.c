@@ -1,4 +1,3 @@
-#include "cpu_init.h"
 #include "cpu_core.h"
 
 void init_config(CONFIG_t* config, char* rom_name)
@@ -52,6 +51,8 @@ bool init_cpu(CPU_t* cpu, CONFIG_t config)
     uint16_t pc_point = (cpu->ram[0xFFFD] << 8) | cpu->ram[0xFFFC]; //it should be at 0xFFFD * 256 + 0xFFFC on NES but not sure right now;
     cpu->PC = pc_point;
     cpu->state = RUNNING;
+    cpu->stack_pointer = 0xfd;
+    cpu->SR = 0x24;
     return true;
 }
 

@@ -4,7 +4,7 @@ CFLAGS = -std=c17 -Wall -Werror -Wextra -g
 LDFLAGS = `sdl2-config --cflags --libs`
 
 # Source and object files
-SRC = main.c cpu_operations.c cpu_core.c cpu_init.c
+SRC = main.c cpu_operations.c cpu_core.c cpu_init.c tracer.c
 OBJ = $(SRC:.c=.o)
 DEBUG_OBJ = $(SRC:.c=.debug.o)
 
