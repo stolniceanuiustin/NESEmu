@@ -1,6 +1,12 @@
 #ifndef HEADERGUARD_CPUTYPES
-
 #define HEADERGUARD_CPUTYPES
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <unistd.h>
+
+#define RESET_ADDRESS 0xFFFC
 
 //TODO: FIX HEADERS 
 typedef uint8_t byte;
@@ -16,7 +22,7 @@ typedef struct
 
 typedef enum{
     NEGATIVE    = 1 << 7,
-    OVERFLOW     = 1 << 6,
+    OVERFLOW    = 1 << 6,
     BREAK       = 1 << 4,
     DECIMAL_    = 1 << 3,
     INTERRUPT   = 1 << 2,

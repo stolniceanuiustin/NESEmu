@@ -114,13 +114,14 @@ int main(int argc, char **argv)
         //measure clock cycles
         //run ppu accordigly
         //1 cpu cycle = 3 ppu cycles !
+        execute_cpu(&cpu);
     
     }
 
     final_cleanup(sdl);
 #ifdef DEBUG
     printf("DEBUG");
-    hex_dump(cpu);
+    //hex_dump(cpu);
 #endif
     return 0;
 }

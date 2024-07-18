@@ -1,18 +1,19 @@
-
 #include "cpu_core.h"
-
+#include "cpu_operations.h"
+#include "tracer.h"
 const int CLOCK_TIME = 1;
 
 // These functions don't take PC as we need compiler optimisations.
 byte read_byte(byte *address)
 {
-    sleep(CLOCK_TIME);
+    //sleep(CLOCK_TIME);
     return (*address);
 }
 
 void write_byte(byte *address, byte value)
 {
     // sleep(CLOCK_TIME);
+    sleep(0.1);
     *address = value;
     return;
 }
@@ -24,6 +25,13 @@ uint16_t read_address(byte *ram, byte offset)
     val |= read_byte(ram + offset);
     return (val);
 }
+uint16_t read_abs_address(byte *ram, uint16_t offset)
+{
+    uint16_t val = read_byte(ram + offset + 1);
+    val <<= 8;
+    val |= read_byte(ram + offset);
+    return(val);
+}
 
 // TODO: Optimise this maybe
 byte read_pc(CPU_t *cpu)
@@ -33,7 +41,7 @@ byte read_pc(CPU_t *cpu)
     return (val);
 }
 
-byte *compute_addr_mode_g1(CPU_t *cpu, bool *page_cross, int* addr_tracer) // Calculates the address based on the addresation mode
+byte *compute_addr_mode_g1(CPU_t *cpu, bool *page_cross, uint16_t* addr_tracer) // Calculates the address based on the addresation mode
 {
     uint16_t address = 0; // The first byte must be 0
     (*page_cross) = false;
@@ -104,52 +112,50 @@ byte *compute_addr_mode_g1(CPU_t *cpu, bool *page_cross, int* addr_tracer) // Ca
 
 void run_instruction_group1(byte *address, CPU_t *cpu, bool page_cross)
 {
-    (void)address;
-    (void)page_cross;
     switch (cpu->inst.aaa)
     {
     case 0x0:
-        // ORA();
+        ORA(cpu, address, page_cross);
         break;
     case 0x1:
-        // AND();
+        AND(cpu, address, page_cross);
         break;
     case 0x2:
-        // EOR();
+        EOR(cpu, address, page_cross);
         break;
     case 0x3:
-        // ADC();
+        ADC(cpu, address, page_cross);
         break;
     case 0x4:
-        // STA();
+        STA(cpu, address);
         break;
     case 0x5:
-        // LDA();
+        LDA(cpu, address, page_cross);
         break;
     case 0x6:
-        // CMP();
+        CMP(cpu, address, page_cross);
         break;
     case 0x7:
-        // SBC();
+        SBC(cpu, address, page_cross);
         break;
     }
 }
 
-//SET FLAGS FUNCTIONS
-
-
 void execute_cpu(CPU_t *cpu)
 {
+    //printf("%d\n", cpu->PC);
     uint16_t addr_tracer = 0;
+    uint16_t original_pc = cpu->PC;
     bool page_cross = false;
     
     cpu->inst.opcode = read_pc(cpu);
     if (cpu->inst.opcode == 0)
     {
-        printf("Invalid opcode 0\n");
+        //printf("%d : Opcode shouldn't be 0\n", cpu->PC);
         return;
     }
-    cpu->PC += 1;
+
+    //cpu->PC += 1;
     cpu->inst.aaa = (0xE0 & cpu->inst.opcode) >> 5; // first 3 bits of the opcode
     cpu->inst.bbb = (0x1C & cpu->inst.opcode) >> 2;
     cpu->inst.cc = (0x03 & cpu->inst.opcode);
@@ -168,8 +174,7 @@ void execute_cpu(CPU_t *cpu)
     }
     switch (cpu->inst.cc)
     {
-    case 0x01: // cc = 01
-
+    case 0x01: // cc = 0
         address = compute_addr_mode_g1(cpu, &page_cross, &addr_tracer);
         run_instruction_group1(address, cpu, page_cross);
         break;
@@ -185,8 +190,7 @@ void execute_cpu(CPU_t *cpu)
             // branching.. will do later
         }
     }
-    #ifdef debug
-        tracer(cpu, addr_tracer, page_cross);
-    #endif
-    //(void)address;
+    
+    tracer(cpu, addr_tracer, page_cross, original_pc);
+    (void)original_pc;
 }

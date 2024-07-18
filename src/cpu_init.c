@@ -48,8 +48,8 @@ bool init_cpu(CPU_t* cpu, CONFIG_t config)
         return false;
     }
     fclose(rom);
-    uint16_t pc_point = (cpu->ram[0xFFFD] << 8) | cpu->ram[0xFFFC]; //it should be at 0xFFFD * 256 + 0xFFFC on NES but not sure right now;
-    cpu->PC = pc_point;
+    //uint16_t pc_point = (cpu->ram[0xFFFD] << 8) | cpu->ram[0xFFFC]; //it should be at 0xFFFD * 256 + 0xFFFC on NES but not sure right now;
+    cpu->PC = read_abs_address(cpu->ram, RESET_ADDRESS);
     cpu->state = RUNNING;
     cpu->stack_pointer = 0xfd;
     cpu->SR = 0x24;
