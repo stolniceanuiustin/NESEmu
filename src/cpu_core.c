@@ -6,7 +6,7 @@ const int CLOCK_TIME = 1;
 // These functions don't take PC as we need compiler optimisations.
 byte read_byte(byte *address)
 {
-    //sleep(CLOCK_TIME);
+    // sleep(CLOCK_TIME);
     return (*address);
 }
 
@@ -30,7 +30,7 @@ uint16_t read_abs_address(byte *ram, uint16_t offset)
     uint16_t val = read_byte(ram + offset + 1);
     val <<= 8;
     val |= read_byte(ram + offset);
-    return(val);
+    return (val);
 }
 
 // TODO: Optimise this maybe
@@ -41,7 +41,68 @@ byte read_pc(CPU_t *cpu)
     return (val);
 }
 
-byte *compute_addr_mode_g1(CPU_t *cpu, bool *page_cross, uint16_t* addr_tracer) // Calculates the address based on the addresation mode
+bool compute_addr_mode_g2(CPU_t *cpu, bool *page_cross, uint16_t *addr_tracer, byte **address_to_return)
+{
+    uint16_t address = 0;
+    (*page_cross) = 0;
+    switch (cpu->inst.bbb)
+    {
+    case 0x0: // #immediate
+        address = (cpu->PC)++;
+        break;
+
+    case 0x1: // zero page
+        address = read_pc(cpu);
+        break;
+
+    case 0x2: // accumulator. there is no address
+        return false;
+
+    case 0x3: // absolute
+        address = read_address(cpu->ram, cpu->PC);
+        cpu->PC += 2;
+        break;
+
+    case 0x4:
+        printf("INVALID OPCODE");
+        break;
+
+    case 0x5: // zero page, x
+        // STX, LDX use zero page, y not x
+        if (cpu->inst.aaa == 0x4 || cpu->inst.aaa == 0x5)
+        {
+            address = read_pc(cpu) + cpu->Y;
+            address &= 0xFF;
+        }
+        else
+        {
+            address = read_pc(cpu) + cpu->X;
+            address &= 0xFF;
+        }
+        break;
+
+    case 0x6:
+        printf("INVALID OPCODE");
+        break;
+
+    case 0x7: // absolute, x
+        address = read_address(cpu->ram, cpu->PC);
+        cpu->PC += 2;
+        //LTX: absolute, y instead of X
+        if(cpu->inst.aaa == 0x7)
+        {
+            address += cpu->Y;
+        }
+        else address += cpu->X;
+        break;
+    }
+    (*addr_tracer) = address;
+    (*address_to_return) = cpu->ram + address;
+
+    return true;
+}
+
+byte *compute_addr_mode_g1(CPU_t *cpu, bool *page_cross, uint16_t *addr_tracer) // Calculates the address based on the addresation mode
 {
     uint16_t address = 0; // The first byte must be 0
     (*page_cross) = false;
@@ -109,7 +170,6 @@ byte *compute_addr_mode_g1(CPU_t *cpu, bool *page_cross, uint16_t* addr_tracer) 
     (*addr_tracer) = address;
     return cpu->ram + address;
 }
-
 void run_instruction_group1(byte *address, CPU_t *cpu, bool page_cross)
 {
     switch (cpu->inst.aaa)
@@ -141,21 +201,56 @@ void run_instruction_group1(byte *address, CPU_t *cpu, bool page_cross)
     }
 }
 
+void run_instruction_group2(byte *address, CPU_t *cpu, bool page_cross, bool accumulator)
+{
+    (void)address;
+    (void)cpu;
+    (void)page_cross;
+    (void)accumulator;
+    switch (cpu->inst.aaa)
+    {
+    case 0x0:
+        //ASL()
+        break;
+    case 0x1:
+        //ROL
+        break;
+    case 0x2:
+        //LSR
+        break;
+    case 0x3:
+        //ROR
+        break;
+    case 0x4:
+        //STX
+        break;
+    case 0x5:
+        //LDX
+        break;
+    case 0x6:
+        //DEC
+        break;
+    case 0x7:
+        //INC
+        break;
+    }
+}
+
 void execute_cpu(CPU_t *cpu)
 {
-    //printf("%d\n", cpu->PC);
+    // printf("%d\n", cpu->PC);
     uint16_t addr_tracer = 0;
     uint16_t original_pc = cpu->PC;
     bool page_cross = false;
-    
+
     cpu->inst.opcode = read_pc(cpu);
     if (cpu->inst.opcode == 0)
     {
-        //printf("%d : Opcode shouldn't be 0\n", cpu->PC);
+        // printf("%d : Opcode shouldn't be 0\n", cpu->PC);
         return;
     }
 
-    //cpu->PC += 1;
+    // cpu->PC += 1;
     cpu->inst.aaa = (0xE0 & cpu->inst.opcode) >> 5; // first 3 bits of the opcode
     cpu->inst.bbb = (0x1C & cpu->inst.opcode) >> 2;
     cpu->inst.cc = (0x03 & cpu->inst.opcode);
@@ -179,8 +274,10 @@ void execute_cpu(CPU_t *cpu)
         run_instruction_group1(address, cpu, page_cross);
         break;
     case 0x02:
-        // address = decode_addrmode_g2(cpu);
-        // run_insturction_group2(address, cpu);
+        if (compute_addr_mode_g2(cpu, &page_cross, &addr_tracer, &address) == true)
+            run_instruction_group2(address, cpu, page_cross, 0); // Not accumulator, on address
+        else
+            run_instruction_group2(NULL, cpu, page_cross, 1); // On accumulator
         break;
     case 0x0:
         // Branching operations: xxy 100 00. deci if(cc == 00 and bb == 100 => branching)
@@ -190,7 +287,7 @@ void execute_cpu(CPU_t *cpu)
             // branching.. will do later
         }
     }
-    
+
     tracer(cpu, addr_tracer, page_cross, original_pc);
     (void)original_pc;
 }

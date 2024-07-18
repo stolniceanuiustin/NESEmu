@@ -1,57 +1,52 @@
 #include "tracer.h"
 // WILL TRACE
 
-void print_flags(byte SR)
+void print_flags_group1(byte SR)
 {
-    for(int i=7; i>=0; i--)
-    {
-        byte byte1 = (SR >> i) & 1;
-        printf("%u", byte1);
-    }
-    printf("\n");
+    printf("C:%01d O:%01d Z:%01d N:%01d\n", (SR) & 1, (SR >> 6) & 1, (SR >> 1) & 1, (SR >> 7) & 1);
 }
 
-void trace_instruction_group1(CPU_t *cpu, bool page_cross)
+void trace_instruction_group1(CPU_t *cpu, uint16_t addr_tracer)
 {
     //PCR STANDS FOR PAGE CROSS, booolean
     switch (cpu->inst.aaa)
     { 
     case 0x0:
-        printf("ORA - OR with accumulator. PCR:%01d. Cycles:%01lu. Flags: ", (int)page_cross, cpu->cycles);
-        print_flags(cpu->SR);
+        printf("ORA - OR with accumulator. Cycles:%01lu. Flags: ", cpu->cycles);
+        print_flags_group1(cpu->SR);
         break;
     case 0x1:
-        printf("AND - with accumulator. PCR:%01d. Cycles:%01lu\n. Flags: ", (int)page_cross, cpu->cycles);
-        print_flags(cpu->SR);
+        printf("AND - A(%02d) and M(%02d). Cycles:%01lu. Flags: ", cpu->A, cpu->ram[addr_tracer], cpu->cycles);
+        print_flags_group1(cpu->SR);
         break;
     case 0x2:
-        printf("EOR - XOR with accumulator. PCR:%01d. Cycles:%01lu\n. Flags: ", (int)page_cross, cpu->cycles);
-        print_flags(cpu->SR);
+        printf("EOR - XOR with accumulator. Cycles:%01lu. Flags: ",  cpu->cycles);
+        print_flags_group1(cpu->SR);
         break;
     case 0x3:
         // ADC();
-        printf("ADC - Add A + M with C. PCR:%01d. Cycles:%01lu\n. Flags: ", (int)page_cross, cpu->cycles);
-        print_flags(cpu->SR);
+        printf("ADC - Add A + M with C. Cycles:%01lu. Flags: ", cpu->cycles);
+        print_flags_group1(cpu->SR);
         break;
     case 0x4:
         // STA();
-        printf("STA - Store A at M. PCR:%01d. Cycles:%01lu\n. Flags: ", (int)page_cross, cpu->cycles);
-        print_flags(cpu->SR);
+        printf("STA - Store A at M. Cycles:%01lu. Flags: ",  cpu->cycles);
+        print_flags_group1(cpu->SR);
         break;
     case 0x5:
         // LDA();
-        printf("LDA - Load A from M. PCR:%01d. Cycles:%01lu\n. Flags: ", (int)page_cross, cpu->cycles);
-        print_flags(cpu->SR);
+        printf("LDA - Load A(%02X) from M. Cycles:%01lu. Flags: ", cpu->A, cpu->cycles);
+        print_flags_group1(cpu->SR);
         break;
     case 0x6:
         // CMP();
-        printf("CMP - CMP A with M. PCR:%01d. Cycles:%01lu\n. Flags: ", (int)page_cross, cpu->cycles);
-        print_flags(cpu->SR);
+        printf("CMP - CMP A(%02X) with M(%02X). Cycles:%01lu. Flags: ",cpu->A, cpu->ram[addr_tracer], cpu->cycles);
+        print_flags_group1(cpu->SR);
         break;
     case 0x7:
         // SBC();
-        printf("SBC - Sub A with M with borrow. PCR:%01d. Cycles:%01lu\n. Flags: ", (int)page_cross, cpu->cycles);
-        print_flags(cpu->SR);
+        printf("SBC - Sub A with M with borrow. Cycles:%01lu. Flags: ",  cpu->cycles);
+        print_flags_group1(cpu->SR);
         break;
     default: printf("Unimplemented opcode\n");
     }
@@ -60,8 +55,8 @@ void trace_instruction_group1(CPU_t *cpu, bool page_cross)
 void tracer(CPU_t* cpu, uint16_t addr_tracer, bool page_cross, uint16_t PC)
 {
     //ADDRESSING MODES AT https://llx.com/Neil/a2/opcodes.html
-    (void)addr_tracer;
-    printf("Address: %04X, Opcode: %02X, AddrMode: %03X, Instruction: ", PC, cpu->inst.opcode, cpu->inst.bbb);
+    (void)page_cross;
+    printf("Address: %04X, Opcode: %02X, Instruction: ", PC, cpu->inst.opcode);
     
     byte low_nibble = cpu->inst.opcode & 0x0F;
     byte high_nibble = cpu->inst.opcode >> 4;
@@ -78,7 +73,7 @@ void tracer(CPU_t* cpu, uint16_t addr_tracer, bool page_cross, uint16_t PC)
     switch (cpu->inst.cc)
     {
     case 0x01: // cc = 01
-        trace_instruction_group1(cpu, page_cross);
+        trace_instruction_group1(cpu, addr_tracer);
         break;
 
     case 0x02:
