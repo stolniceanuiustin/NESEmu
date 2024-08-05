@@ -8,9 +8,9 @@ void print_flags_group1(byte SR)
 
 void trace_instruction_group1(CPU_t *cpu, uint16_t addr_tracer)
 {
-    //PCR STANDS FOR PAGE CROSS, booolean
+    // PCR STANDS FOR PAGE CROSS, booolean
     switch (cpu->inst.aaa)
-    { 
+    {
     case 0x0:
         printf("ORA - OR with accumulator. Cycles:%01lu. Flags: ", cpu->cycles);
         print_flags_group1(cpu->SR);
@@ -20,7 +20,7 @@ void trace_instruction_group1(CPU_t *cpu, uint16_t addr_tracer)
         print_flags_group1(cpu->SR);
         break;
     case 0x2:
-        printf("EOR - XOR with accumulator. Cycles:%01lu. Flags: ",  cpu->cycles);
+        printf("EOR - XOR with accumulator. Cycles:%01lu. Flags: ", cpu->cycles);
         print_flags_group1(cpu->SR);
         break;
     case 0x3:
@@ -30,7 +30,7 @@ void trace_instruction_group1(CPU_t *cpu, uint16_t addr_tracer)
         break;
     case 0x4:
         // STA();
-        printf("STA - Store A at M. Cycles:%01lu. Flags: ",  cpu->cycles);
+        printf("STA - Store A at M. Cycles:%01lu. Flags: ", cpu->cycles);
         print_flags_group1(cpu->SR);
         break;
     case 0x5:
@@ -40,24 +40,93 @@ void trace_instruction_group1(CPU_t *cpu, uint16_t addr_tracer)
         break;
     case 0x6:
         // CMP();
-        printf("CMP - CMP A(%02X) with M(%02X). Cycles:%01lu. Flags: ",cpu->A, cpu->ram[addr_tracer], cpu->cycles);
+        printf("CMP - CMP A(%02X) with M(%02X). Cycles:%01lu. Flags: ", cpu->A, cpu->ram[addr_tracer], cpu->cycles);
         print_flags_group1(cpu->SR);
         break;
     case 0x7:
         // SBC();
-        printf("SBC - Sub A with M with borrow. Cycles:%01lu. Flags: ",  cpu->cycles);
+        printf("SBC - Sub A with M with borrow. Cycles:%01lu. Flags: ", cpu->cycles);
         print_flags_group1(cpu->SR);
         break;
-    default: printf("Unimplemented opcode\n");
+    default:
+        printf("Unimplemented opcode\n");
     }
 }
 
-void tracer(CPU_t* cpu, uint16_t addr_tracer, bool page_cross, uint16_t PC)
+void trace_instruction_group2(CPU_t *cpu, uint16_t addr_tracer, bool onaddress_group2)
 {
-    //ADDRESSING MODES AT https://llx.com/Neil/a2/opcodes.html
+    //TODO: could add results but unsure if worth it. flags are more significant here i think. 
+    switch (cpu->inst.aaa)
+    {
+    case 0x0:
+        if (onaddress_group2)
+        {
+            printf("ASL - Shift left arithmetic. Value(%02X), Result(%02X), Cycles:%01lu, Flags: ", cpu->ram[addr_tracer], (cpu->ram[addr_tracer] << 1), cpu->cycles);
+            print_flags_group1(cpu->SR);
+        }
+        else
+        {
+            printf("ASL - Shift left arithmetic. A(%02X), Result(%02X), Cycles:%01lu, Flags: ", cpu->A, cpu->A << 1, cpu->cycles);
+            print_flags_group1(cpu->SR);
+        }
+        break;
+    case 0x1:
+        if (onaddress_group2)
+        {
+            printf("ROL - Rotate left. Value(%02X), Cycles:%01lu, Flags: ", cpu->ram[addr_tracer], cpu->cycles);
+            print_flags_group1(cpu->SR);
+        }
+        else
+        {
+            printf("ROL - Rotate left. A(%02X), Cycles:%01lu, Flags: ", cpu->A, cpu->cycles);
+            print_flags_group1(cpu->SR);
+        }
+        break;
+    case 0x2:
+        if (onaddress_group2)
+        {
+            printf("LSR - Logic shift right. Value(%02X), Cycles:%01lu, Flags: ", cpu->ram[addr_tracer], cpu->cycles);
+            print_flags_group1(cpu->SR);
+        }
+        else
+        {
+            printf("LSR - Logic shift right. A(%02X), Cycles:%01lu, Flags: ", cpu->A, cpu->cycles);
+            print_flags_group1(cpu->SR);
+        }
+        break;
+    case 0x3:
+        if (onaddress_group2)
+        {
+            printf("ROR - Rotate right. Value(%02X), Cycles:%01lu, Flags: ", cpu->ram[addr_tracer], cpu->cycles);
+            print_flags_group1(cpu->SR);
+        }
+        else
+        {
+            printf("ROR - Rotate right. A(%02X), Cycles:%01lu, Flags: ", cpu->A, cpu->cycles);
+            print_flags_group1(cpu->SR);
+        }
+        break;
+    case 0x4:
+        // STX
+        break;
+    case 0x5:
+        // LDX
+        break;
+    case 0x6:
+        // DEC
+        break;
+    case 0x7:
+        // INC
+        break;
+    }
+}
+
+void tracer(CPU_t *cpu, uint16_t addr_tracer, bool page_cross, uint16_t PC, bool onaddress_group2)
+{
+    // ADDRESSING MODES AT https://llx.com/Neil/a2/opcodes.html
     (void)page_cross;
     printf("Address: %04X, Opcode: %02X, Instruction: ", PC, cpu->inst.opcode);
-    
+
     byte low_nibble = cpu->inst.opcode & 0x0F;
     byte high_nibble = cpu->inst.opcode >> 4;
     if (low_nibble == 0x08)
@@ -77,9 +146,10 @@ void tracer(CPU_t* cpu, uint16_t addr_tracer, bool page_cross, uint16_t PC)
         break;
 
     case 0x02:
-        printf("Unimplemented opcode\n");
-        // address = decode_addrmode_g2(cpu);
-        // run_insturction_group2(address, cpu);
+        trace_instruction_group2(cpu, addr_tracer, onaddress_group2);
+        // printf("Unimplemented opcode\n");
+        //  address = decode_addrmode_g2(cpu);
+        //  run_insturction_group2(address, cpu);
         break;
 
     case 0x0:

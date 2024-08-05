@@ -44,7 +44,7 @@ byte read_pc(CPU_t *cpu)
 bool compute_addr_mode_g2(CPU_t *cpu, bool *page_cross, uint16_t *addr_tracer, byte **address_to_return)
 {
     uint16_t address = 0;
-    (*page_cross) = 0;
+    (*page_cross) = false;
     switch (cpu->inst.bbb)
     {
     case 0x0: // #immediate
@@ -88,12 +88,18 @@ bool compute_addr_mode_g2(CPU_t *cpu, bool *page_cross, uint16_t *addr_tracer, b
     case 0x7: // absolute, x
         address = read_address(cpu->ram, cpu->PC);
         cpu->PC += 2;
-        //LTX: absolute, y instead of X
-        if(cpu->inst.aaa == 0x7)
+        // LTX: absolute, y instead of X
+        if (cpu->inst.aaa == 0x7)
         {
+            int first_digit_address = address >> 12; // We get the first 4 bits -> one digit in Hexa
             address += cpu->Y;
+            int first_digit_address_after_increment = address >> 12;
+            if (first_digit_address < first_digit_address_after_increment)
+                (*page_cross) = true;
+            break;
         }
-        else address += cpu->X;
+        else
+            address += cpu->X;
         break;
     }
     (*addr_tracer) = address;
@@ -203,35 +209,32 @@ void run_instruction_group1(byte *address, CPU_t *cpu, bool page_cross)
 
 void run_instruction_group2(byte *address, CPU_t *cpu, bool page_cross, bool accumulator)
 {
-    (void)address;
-    (void)cpu;
     (void)page_cross;
-    (void)accumulator;
     switch (cpu->inst.aaa)
     {
     case 0x0:
-        //ASL()
+        ASL(cpu, address, accumulator);
         break;
     case 0x1:
-        //ROL
+        ROL(cpu, address, accumulator);
         break;
     case 0x2:
-        //LSR
+        LSR(cpu, address, accumulator);
         break;
     case 0x3:
-        //ROR
+        ROR(cpu, address, accumulator);
         break;
     case 0x4:
-        //STX
+        STX(cpu, address);
         break;
     case 0x5:
-        //LDX
+        LDX(cpu, address, page_cross);
         break;
     case 0x6:
-        //DEC
+        // DEC
         break;
     case 0x7:
-        //INC
+        // INC
         break;
     }
 }
@@ -239,6 +242,7 @@ void run_instruction_group2(byte *address, CPU_t *cpu, bool page_cross, bool acc
 void execute_cpu(CPU_t *cpu)
 {
     // printf("%d\n", cpu->PC);
+    bool onaddress_group2 = false;
     uint16_t addr_tracer = 0;
     uint16_t original_pc = cpu->PC;
     bool page_cross = false;
@@ -274,7 +278,8 @@ void execute_cpu(CPU_t *cpu)
         run_instruction_group1(address, cpu, page_cross);
         break;
     case 0x02:
-        if (compute_addr_mode_g2(cpu, &page_cross, &addr_tracer, &address) == true)
+        onaddress_group2 = compute_addr_mode_g2(cpu, &page_cross, &addr_tracer, &address);
+        if (onaddress_group2 == true)
             run_instruction_group2(address, cpu, page_cross, 0); // Not accumulator, on address
         else
             run_instruction_group2(NULL, cpu, page_cross, 1); // On accumulator
@@ -288,6 +293,6 @@ void execute_cpu(CPU_t *cpu)
         }
     }
 
-    tracer(cpu, addr_tracer, page_cross, original_pc);
+    tracer(cpu, addr_tracer, page_cross, original_pc, onaddress_group2);
     (void)original_pc;
 }

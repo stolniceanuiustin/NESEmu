@@ -8,7 +8,7 @@
 
 #define RESET_ADDRESS 0xFFFC
 
-//TODO: FIX HEADERS 
+
 typedef uint8_t byte;
 typedef enum {QUIT, RUNNING, PAUSED}emulator_state_t;
 typedef struct
