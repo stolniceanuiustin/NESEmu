@@ -117,11 +117,11 @@ int main(int argc, char **argv)
         execute_cpu(&cpu);
     
     }
-
-    final_cleanup(sdl);
-#ifdef DEBUG
-    printf("DEBUG");
+    //printf("DEBUG");
     //hex_dump(cpu);
-#endif
+    final_cleanup(sdl);
+//#ifdef DEBUG
+    
+//#endif
     return 0;
 }

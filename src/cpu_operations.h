@@ -18,5 +18,9 @@ void ASL(CPU_t* cpu, byte* address, bool accumulator);
 void ROR(CPU_t *cpu, byte *address, bool accumulator);
 void ROL(CPU_t *cpu, byte *address, bool accumulator);
 void LSR(CPU_t *cpu, byte *address, bool accumulator);
-
+void INC(CPU_t *cpu, byte *address);
+void DEC(CPU_t *cpu, byte *address);
+void BIT(CPU_t *cpu, byte *address);
+void JMP_indirect(CPU_t *cpu, uint16_t offset_address);
+void JMP_abs(CPU_t *cpu, uint16_t offset_address);
 #endif

@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <unistd.h>
-
+#include <time.h>
 #define RESET_ADDRESS 0xFFFC
 
 

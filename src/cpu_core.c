@@ -41,10 +41,12 @@ byte read_pc(CPU_t *cpu)
     return (val);
 }
 
-bool compute_addr_mode_g2(CPU_t *cpu, bool *page_cross, uint16_t *addr_tracer, byte **address_to_return)
+bool compute_addr_mode_g23(CPU_t *cpu, bool *page_cross, uint16_t *offset_address, byte **address_to_return)
 {
     uint16_t address = 0;
     (*page_cross) = false;
+    if(cpu->inst.opcode != 0x004C && cpu->inst.opcode != 0x0060) // EXCLUDE THE JUMPS;
+    {
     switch (cpu->inst.bbb)
     {
     case 0x0: // #immediate
@@ -59,17 +61,17 @@ bool compute_addr_mode_g2(CPU_t *cpu, bool *page_cross, uint16_t *addr_tracer, b
         return false;
 
     case 0x3: // absolute
-        address = read_address(cpu->ram, cpu->PC);
+        address = read_abs_address(cpu->ram, cpu->PC);
         cpu->PC += 2;
         break;
 
     case 0x4:
-        printf("INVALID OPCODE");
+        printf("INVALID OPCODE\n");
         break;
 
     case 0x5: // zero page, x
         // STX, LDX use zero page, y not x
-        if (cpu->inst.aaa == 0x4 || cpu->inst.aaa == 0x5)
+        if ((cpu->inst.aaa == 0x4 || cpu->inst.aaa == 0x5) && cpu->inst.cc == 0x2)
         {
             address = read_pc(cpu) + cpu->Y;
             address &= 0xFF;
@@ -89,7 +91,7 @@ bool compute_addr_mode_g2(CPU_t *cpu, bool *page_cross, uint16_t *addr_tracer, b
         address = read_address(cpu->ram, cpu->PC);
         cpu->PC += 2;
         // LTX: absolute, y instead of X
-        if (cpu->inst.aaa == 0x7)
+        if (cpu->inst.aaa == 0x7 && cpu->inst.cc == 0x2)
         {
             int first_digit_address = address >> 12; // We get the first 4 bits -> one digit in Hexa
             address += cpu->Y;
@@ -102,13 +104,14 @@ bool compute_addr_mode_g2(CPU_t *cpu, bool *page_cross, uint16_t *addr_tracer, b
             address += cpu->X;
         break;
     }
-    (*addr_tracer) = address;
+    }
+    (*offset_address) = address;
     (*address_to_return) = cpu->ram + address;
 
     return true;
 }
 
-byte *compute_addr_mode_g1(CPU_t *cpu, bool *page_cross, uint16_t *addr_tracer) // Calculates the address based on the addresation mode
+byte *compute_addr_mode_g1(CPU_t *cpu, bool *page_cross, uint16_t *offset_address) // Calculates the address based on the addresation mode
 {
     uint16_t address = 0; // The first byte must be 0
     (*page_cross) = false;
@@ -129,7 +132,7 @@ byte *compute_addr_mode_g1(CPU_t *cpu, bool *page_cross, uint16_t *addr_tracer) 
         break;
 
     case 0x03: // Absolute. The full 16-bit address
-        address = read_address(cpu->ram, cpu->PC);
+        address = read_abs_address(cpu->ram, cpu->PC);
         cpu->PC += 2;
         break;
 
@@ -173,7 +176,7 @@ byte *compute_addr_mode_g1(CPU_t *cpu, bool *page_cross, uint16_t *addr_tracer) 
         break;
     }
     // We got the offset of the address but we have to return it as a pointer, so we return it as an offset to ram
-    (*addr_tracer) = address;
+    (*offset_address) = address;
     return cpu->ram + address;
 }
 void run_instruction_group1(byte *address, CPU_t *cpu, bool page_cross)
@@ -209,7 +212,6 @@ void run_instruction_group1(byte *address, CPU_t *cpu, bool page_cross)
 
 void run_instruction_group2(byte *address, CPU_t *cpu, bool page_cross, bool accumulator)
 {
-    (void)page_cross;
     switch (cpu->inst.aaa)
     {
     case 0x0:
@@ -231,27 +233,79 @@ void run_instruction_group2(byte *address, CPU_t *cpu, bool page_cross, bool acc
         LDX(cpu, address, page_cross);
         break;
     case 0x6:
-        // DEC
+        DEC(cpu, address);
         break;
     case 0x7:
-        // INC
+        INC(cpu, address);
         break;
     }
 }
 
-void execute_cpu(CPU_t *cpu)
+void run_instruction_group3(byte *address, CPU_t *cpu, bool page_cross, uint16_t offset_address)
+{
+    uint16_t jump_address = 0;
+    (void)page_cross;
+    (void)offset_address;
+    switch (cpu->inst.aaa)
+    {
+    case 0x0:
+        printf("INVALID OPCODE \n");
+        break;
+    case 0x1:
+        BIT(cpu, address);
+        break;
+    case 0x2:
+        jump_address = read_abs_address(cpu->ram, cpu->PC);
+        cpu->PC += 2;
+        JMP_abs(cpu, jump_address);
+        break;
+    case 0x3:
+        jump_address = read_abs_address(cpu->ram, cpu->PC);
+        cpu->PC += 2;
+        JMP_indirect(cpu, jump_address);
+        break;
+    case 0x4:
+        // STY
+        break;
+    case 0x5:
+        // LDY
+        break;
+    case 0x6:
+        // CPY
+        break;
+    case 0x7:
+        // CPX
+        break;
+    }
+}
+
+int execute_cpu(CPU_t *cpu)
 {
     // printf("%d\n", cpu->PC);
+    //SLEEP CODE(have no idea)
+    struct timespec ts;
+    ts.tv_sec = 0;            // Seconds
+    ts.tv_nsec = 500000000L;  // Nanoseconds (0.5 seconds)
+
+    nanosleep(&ts, NULL);
+    
+    
     bool onaddress_group2 = false;
-    uint16_t addr_tracer = 0;
+    uint16_t offset_address = 0;
     uint16_t original_pc = cpu->PC;
     bool page_cross = false;
 
+    if (original_pc == 0xFFFF)
+    {
+        printf("END OF PROGRAM \n");
+        cpu->state = QUIT;
+        return -1;
+    }
     cpu->inst.opcode = read_pc(cpu);
     if (cpu->inst.opcode == 0)
     {
         // printf("%d : Opcode shouldn't be 0\n", cpu->PC);
-        return;
+        return 1;
     }
 
     // cpu->PC += 1;
@@ -273,26 +327,24 @@ void execute_cpu(CPU_t *cpu)
     }
     switch (cpu->inst.cc)
     {
-    case 0x01: // cc = 0
-        address = compute_addr_mode_g1(cpu, &page_cross, &addr_tracer);
+    case 0x01: // cc = 1
+        address = compute_addr_mode_g1(cpu, &page_cross, &offset_address);
         run_instruction_group1(address, cpu, page_cross);
         break;
-    case 0x02:
-        onaddress_group2 = compute_addr_mode_g2(cpu, &page_cross, &addr_tracer, &address);
+    case 0x02: // cc = 10
+        onaddress_group2 = compute_addr_mode_g23(cpu, &page_cross, &offset_address, &address);
         if (onaddress_group2 == true)
             run_instruction_group2(address, cpu, page_cross, 0); // Not accumulator, on address
         else
             run_instruction_group2(NULL, cpu, page_cross, 1); // On accumulator
         break;
-    case 0x0:
-        // Branching operations: xxy 100 00. deci if(cc == 00 and bb == 100 => branching)
-        // xx indicates a flag. 00 = negative, o1 = overflow, 10 = carry, 11 = zero
-        if (cpu->inst.bbb == 0x4)
-        {
-            // branching.. will do later
-        }
+    case 0x0: // cc = 00
+        compute_addr_mode_g23(cpu, &page_cross, &offset_address, &address);
+        run_instruction_group3(address, cpu, page_cross, offset_address);
+        break;
     }
 
-    tracer(cpu, addr_tracer, page_cross, original_pc, onaddress_group2);
+    tracer(cpu, offset_address, page_cross, original_pc, onaddress_group2);
     (void)original_pc;
+    return 1;
 }

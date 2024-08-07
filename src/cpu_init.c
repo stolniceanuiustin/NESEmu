@@ -50,6 +50,9 @@ bool init_cpu(CPU_t* cpu, CONFIG_t config)
     fclose(rom);
     //uint16_t pc_point = (cpu->ram[0xFFFD] << 8) | cpu->ram[0xFFFC]; //it should be at 0xFFFD * 256 + 0xFFFC on NES but not sure right now;
     cpu->PC = read_abs_address(cpu->ram, RESET_ADDRESS);
+    
+    //TODO: CHANGE ENTRYPOIINT
+    //cpu->PC = 0x0200;
     cpu->state = RUNNING;
     cpu->stack_pointer = 0xfd;
     cpu->SR = 0x24;
@@ -60,6 +63,6 @@ void hex_dump(CPU_t cpu)
 {
     for(int i=0; i<=0xFFFF; i++)
     {
-        printf("%02X ", cpu.ram[i]);
+        printf("%04X: %02X ", i, cpu.ram[i]);
     }
 }

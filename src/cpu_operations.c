@@ -6,6 +6,30 @@ void clear_overflow(CPU_t *cpu);
 void set_carry(CPU_t *cpu);
 void clear_carry(CPU_t *cpu);
 void set_ZN_no_clear(CPU_t *cpu, byte value);
+
+byte read_byte_local(byte *address)
+{
+    // sleep(CLOCK_TIME);
+    return (*address);
+}
+
+uint16_t read_address_local(byte *address)
+{
+    uint16_t val = read_byte_local(address + 1); // little endian
+    val <<= 8;
+    val |= read_byte_local(address);
+    return (val);
+}
+
+uint16_t read_abs_address_local(CPU_t* cpu, uint16_t offset)
+{
+    uint16_t val = read_byte_local(cpu->ram + offset + 1); // little endian
+    val <<= 8;
+    val |= read_byte_local(cpu->ram + offset);
+    return (val);
+}
+
+
 // Here will be all the helper functions for emulating the instructions
 
 // GROUP 1 INSTRUCTIOS
@@ -108,7 +132,7 @@ void SBC(CPU_t *cpu, byte *address, bool page_cross)
 }
 
 // GROUP 2 INSTRUCTIONS
-//TODO: can make this functions faster by not clearing first/last bit, clearing all flags at once and doing a set ZN with no clear
+// TODO: can make this functions faster by not clearing first/last bit, clearing all flags at once and doing a set ZN with no clear
 void ASL(CPU_t *cpu, byte *address, bool accumulator)
 {
     // Arithmetic shift left
@@ -188,7 +212,7 @@ void ROR(CPU_t *cpu, byte *address, bool accumulator)
     {
         int carry_flag = (cpu->A) & 1;
         cpu->A = cpu->A >> 1;
-        cpu->A &= ~(1 << 7);               // clear first bit(should be clear already);
+        cpu->A &= ~(1 << 7);              // clear first bit(should be clear already);
         cpu->A |= (cpu->SR & CARRY) << 7; // set first bit to carry flag
 
         if (carry_flag)
@@ -200,10 +224,10 @@ void ROR(CPU_t *cpu, byte *address, bool accumulator)
     else
     {
         int carry_flag = (*address) & 1;
-        
+
         (*address) = (*address) >> 1;
-        (*address) &= ~(1 << 7); // clear first bit(should be clear already);
-        (*address) |= (cpu->SR & CARRY) << 7;  // set first bit to carry flag
+        (*address) &= ~(1 << 7);              // clear first bit(should be clear already);
+        (*address) |= (cpu->SR & CARRY) << 7; // set first bit to carry flag
 
         if (carry_flag)
             set_carry(cpu);
@@ -216,13 +240,13 @@ void ROR(CPU_t *cpu, byte *address, bool accumulator)
 }
 void LSR(CPU_t *cpu, byte *address, bool accumulator)
 {
-    //Logical shift right
+    // Logical shift right
     int lookup[] = {-1, 5, 2, 6, -1, 6, -1, 7};
     if (accumulator)
     {
         int carry_flag = (cpu->A) & 1;
         cpu->A = cpu->A >> 1;
-        cpu->A &= ~(1 << 7);               // clear first bit(should be clear already);
+        cpu->A &= ~(1 << 7); // clear first bit(should be clear already);
 
         if (carry_flag)
             set_carry(cpu);
@@ -233,7 +257,7 @@ void LSR(CPU_t *cpu, byte *address, bool accumulator)
     else
     {
         int carry_flag = (*address) & 1;
-        
+
         (*address) = (*address) >> 1;
         (*address) &= ~(1 << 7); // clear first bit(should be clear already);
 
@@ -248,7 +272,8 @@ void LSR(CPU_t *cpu, byte *address, bool accumulator)
 }
 void STX(CPU_t *cpu, byte *address)
 {
-    int lookup[] = {-1, 3, -1, 4, -1, 4};
+    // Curiously, doesn't affect any flag whatsoever.
+    int lookup[] = {-1, 3, -1, 4, -1, 4, -1, -1};
     (*address) = cpu->X;
     cpu->cycles += lookup[cpu->inst.bbb];
 }
@@ -259,7 +284,50 @@ void LDX(CPU_t *cpu, byte *address, bool page_cross)
     set_ZN(cpu, (*address));
     cpu->cycles += lookup[cpu->inst.bbb] + (int)page_cross;
 }
+void INC(CPU_t *cpu, byte *address)
+{
+    int lookup[] = {-1, 5, -1, 6, -1, 6, -1, 7};
+    (*address) += 1;
+    set_ZN(cpu, (*address));
+    cpu->cycles += lookup[cpu->inst.bbb];
+}
+void DEC(CPU_t *cpu, byte *address)
+{
+    int lookup[] = {-1, 5, -1, 6, -1, 6, -1, 7};
+    (*address) -= 1;
+    set_ZN(cpu, (*address));
+    cpu->cycles += lookup[cpu->inst.bbb];
+}
 
+// GROUP3 OPERATIONS
+void BIT(CPU_t *cpu, byte *address)
+{
+    int lookup[] = {-1, 3, -1, 4, -1, -1, -1, -1};
+    uint8_t result = cpu->A & (*address);
+    cpu->SR &= ~(ZERO | NEGATIVE);
+    if (!result)
+        cpu->SR |= ZERO;
+
+    // This sets the overflow flag
+    cpu->SR |= ((*address) & OVERFLOW);
+
+    // This sets the negative flag
+    cpu->SR |= ((*address) & NEGATIVE);
+
+    cpu->cycles += lookup[cpu->inst.bbb];
+}
+
+void JMP_indirect(CPU_t *cpu, uint16_t offset_address)
+{
+    cpu->PC = read_abs_address_local(cpu, offset_address);
+    cpu->cycles += 5;
+}
+
+void JMP_abs(CPU_t *cpu, uint16_t offset_address)
+{
+    cpu->PC = offset_address;
+    cpu->cycles += 3;
+}
 
 void set_ZN(CPU_t *cpu, byte value)
 {
@@ -268,7 +336,7 @@ void set_ZN(CPU_t *cpu, byte value)
     cpu->SR |= (value & NEGATIVE);
 }
 
-//FASTER THAN SET ZN IF FLAGS ALREADY CLEARED
+// FASTER THAN SET ZN IF FLAGS ALREADY CLEARED
 void set_ZN_no_clear(CPU_t *cpu, byte value)
 {
     cpu->SR |= ((!value) ? ZERO : 0);
